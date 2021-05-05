@@ -108,7 +108,8 @@ unsigned char * read_file(char *file_name)
 	p = x_calloc(1, 1024);
 	tmp = fread(p, 1024, 1, fp);
 	if (!feof(fp))
-		printf_err("Didn't read the entire input file (%s), it's too long\n", file_name);
+		printf_warn("Didn't read the entire input file (%s), it's too long\n",
+			    file_name);
 
 	/*
 	 * If an error  occurs,  or the  end-of-file is reached, 
