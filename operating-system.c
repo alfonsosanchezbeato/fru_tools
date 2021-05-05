@@ -215,6 +215,27 @@ void dump_BOARD(struct BOARD_INFO *fru)
 				}
 			}
 		}
+	} else if (strncasecmp((const char *)&fru->manufacturer[1], "XILINX",
+			       strlen("XILINX")) == 0) {
+		for (i = 0; i < CUSTOM_FIELDS; i++) {
+			/* These are Xilinx custom fields */
+			if (fru->custom[i] && fru->custom[i][0] & 0x3F) {
+				switch (i) {
+				case 0:
+					dump_fru_field("Revision ", 0, fru->custom[i]);
+					break;
+				case 1:
+					dump_fru_field("PCIe info ", 0, fru->custom[i]);
+					break;
+				case 2:
+					dump_fru_field("UUID ", 0, fru->custom[i]);
+					break;
+				default:
+					dump_fru_field("Unknown ", 0, fru->custom[i]);
+					break;
+				}
+			}
+		}
 	} else {
 		printf("Custom Fields:\n");
 		for (i = 0; i < CUSTOM_FIELDS; i++) {
