@@ -485,7 +485,7 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 			return NULL;
 		}
 		if (calc_zero_checksum(p, 4)) {
-			printf_err("MultiRecord Area %i (Record Type 0x%x): "
+			printf_warn("MultiRecord Area %i (Record Type 0x%x): "
 					"Header Checksum failed\n", i, p[0]);
 			return NULL;
 		}
@@ -556,7 +556,7 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 				}
 				break;
 			default:
-				printf_err("Unknown MultiRecord Area\n");
+				printf_warn("Unknown MultiRecord Area\n");
 		}
 
 		i++;
@@ -643,15 +643,16 @@ void free_FRU(struct FRU_DATA *fru)
 		free(fru->Board_Area->custom[j]);
 	free(fru->Board_Area);
 
-	for(j = 0; j < NUM_SUPPLIES; j++)
-		free(fru->MultiRecord_Area->supplies[j]);
-	free(fru->MultiRecord_Area->i2c_devices);
+	if (fru->MultiRecord_Area) {
+		for (j = 0; j < NUM_SUPPLIES; j++)
+			free(fru->MultiRecord_Area->supplies[j]);
 
-	free(fru->MultiRecord_Area->connector);
-	free(fru->MultiRecord_Area);
+		free(fru->MultiRecord_Area->i2c_devices);
+		free(fru->MultiRecord_Area->connector);
+		free(fru->MultiRecord_Area);
+	}
 
 	free(fru);
-
 }
 
 /*
