@@ -161,56 +161,83 @@ void write_FRU(struct FRU_DATA *fru, char * file_name, bool packed)
 	free(buf);
 }
 
-static void dump_fru_field(const char * description, size_t offset, unsigned char * field)
+static void dump_fru_field(const char * description, size_t offset,
+			   unsigned char * field, const char *output_field)
 {
-	/* does field exist, and have length? */
+	/* does field exist? */
 	if (field) {
-		printf("%s\t: ", description);
-		if (FIELD_LEN(field)) {
-			if (TYPE_CODE(field) == FRU_STRING_ASCII || offset) {
-				printf("%s\n", &field[offset + 1]);
+		/* If we want just an output field */
+		if (output_field) {
+			if (strcasecmp(description, output_field) != 0)
+				return;
+
+			if (FIELD_LEN(field)) {
+				if (TYPE_CODE(field) == FRU_STRING_ASCII || offset) {
+					/* Trim spaces at the end */
+					size_t i;
+					unsigned char *str = &field[offset + 1];
+					size_t len = strlen((char *) str);
+					for (i = 1;  i <= len && str[len - i] == ' '; ++i)
+						str[len - i] = '\0';
+
+					printf("%s\n", str);
+				} else {
+					printf("Non-ASCII\n");
+				}
 			} else {
-				printf("Non-ASCII\n");
+				printf("Empty Field\n");
 			}
-		} else
-			printf("Empty Field\n");
+		} else {
+			printf("%s\t: ", description);
+			if (FIELD_LEN(field)) {
+				if (TYPE_CODE(field) == FRU_STRING_ASCII || offset) {
+					printf("%s\n", &field[offset + 1]);
+				} else {
+					printf("Non-ASCII\n");
+				}
+			} else {
+				printf("Empty Field\n");
+			}
+		}
 	}
 }
 
-void dump_BOARD(struct BOARD_INFO *fru)
+void dump_BOARD(struct BOARD_INFO *fru, const char *output_field)
 {
 	unsigned int i, j;
 	time_t tmp = min2date(fru->mfg_date);
 
-	printf("Date of Man\t: %s", ctime(&tmp));
-	dump_fru_field("Manufacturer", 0, fru->manufacturer);
-	dump_fru_field("Product Name", 0, fru->product_name);
-	dump_fru_field("Serial Number", 0, fru->serial_number);
-	dump_fru_field("Part Number", 0, fru->part_number);
-	dump_fru_field("FRU File ID", 0, fru->FRU_file_ID);
+	if (output_field == NULL)
+		printf("Date of Man\t: %s", ctime(&tmp));
+	dump_fru_field("Manufacturer", 0, fru->manufacturer, output_field);
+	dump_fru_field("Product Name", 0, fru->product_name, output_field);
+	dump_fru_field("Serial Number", 0, fru->serial_number, output_field);
+	dump_fru_field("Part Number", 0, fru->part_number, output_field);
+	dump_fru_field("FRU File ID", 0, fru->FRU_file_ID, output_field);
 
-	if (!strncasecmp((const char *)&fru->manufacturer[1], "Analog Devices", strlen("Analog Devices"))) {
+	if (!strncasecmp((const char *)&fru->manufacturer[1], "Analog Devices",
+			 strlen("Analog Devices"))) {
 		for (i = 0; i < CUSTOM_FIELDS; i++) {
 			/* These are ADI custom fields */
 			if (fru->custom[i] && fru->custom[i][0] & 0x3F) {
 				switch (fru->custom[i][1]) {
 					case 0:
-						dump_fru_field("PCB Rev ", 1, fru->custom[i]);
+						dump_fru_field("PCB Rev ", 1, fru->custom[i], output_field);
 						break;
 					case 1:
-						dump_fru_field("PCB ID  ", 1, fru->custom[i]);
+						dump_fru_field("PCB ID  ", 1, fru->custom[i], output_field);
 						break;
 					case 2:
-						dump_fru_field("BOM Rev ", 1, fru->custom[i]);
+						dump_fru_field("BOM Rev ", 1, fru->custom[i], output_field);
 						break;
 					case 3:
-						dump_fru_field("Uses LVDS", 1, fru->custom[i]);
+						dump_fru_field("Uses LVDS", 1, fru->custom[i], output_field);
 						break;
 					case 4:
-						dump_fru_field("Tuning  ", 1, fru->custom[i]);
+						dump_fru_field("Tuning  ", 1, fru->custom[i], output_field);
 						break;
 					default:
-						dump_fru_field("Unknown ", 1, fru->custom[i]);
+						dump_fru_field("Unknown ", 1, fru->custom[i], output_field);
 						break;
 				}
 			}
@@ -222,16 +249,16 @@ void dump_BOARD(struct BOARD_INFO *fru)
 			if (fru->custom[i] && fru->custom[i][0] & 0x3F) {
 				switch (i) {
 				case 0:
-					dump_fru_field("Revision ", 0, fru->custom[i]);
+					dump_fru_field("Revision", 0, fru->custom[i], output_field);
 					break;
 				case 1:
-					dump_fru_field("PCIe info ", 0, fru->custom[i]);
+					dump_fru_field("PCIe info", 0, fru->custom[i], output_field);
 					break;
 				case 2:
-					dump_fru_field("UUID ", 0, fru->custom[i]);
+					dump_fru_field("UUID", 0, fru->custom[i], output_field);
 					break;
 				default:
-					dump_fru_field("Unknown ", 0, fru->custom[i]);
+					dump_fru_field("Unknown", 0, fru->custom[i], output_field);
 					break;
 				}
 			}
@@ -245,7 +272,9 @@ void dump_BOARD(struct BOARD_INFO *fru)
 					printf(" %02x", fru->custom[i][j] & 0xFF);
 				printf("  |");
 				for (j = 1 ; j <= (fru->custom[i][0] & 0x3F); j++)
-					printf("%c", ((fru->custom[i][j] < 32) || (fru->custom[i][j] >= 127)) ? '.': fru->custom[i][j]);
+					printf("%c", ((fru->custom[i][j] < 32) ||
+							(fru->custom[i][j] >= 127)) ? '.':
+								fru->custom[i][j]);
 				printf("|\n");
 			}
 		}
@@ -444,6 +473,7 @@ int main(int argc, char **argv)
 	char *serial = NULL;
 	char *tuning = NULL;
 	char *output_file = NULL;
+	char *output_field = NULL;
 	unsigned int date = 0;
 	int c;
 	unsigned char *raw_input_data = NULL;
@@ -453,7 +483,7 @@ int main(int argc, char **argv)
 	bool output_required = false;
 
 	opterr = 0;
-	while ((c = getopt (argc, argv, "26bcpv?d:h:s:t:i:o:")) != -1)
+	while ((c = getopt (argc, argv, "26bcpv?d:h:s:t:i:o:f:")) != -1)
 	switch (c) {
 		case 'b':
 			dump |= DUMP_BOARD;
@@ -522,6 +552,10 @@ int main(int argc, char **argv)
 		case 'i':
 			input_file = optarg;
 			break;
+		case 'f':
+			output_field = optarg;
+			quiet = 1;
+			break;
 		case '?':
 		case 'h':
 			usage();
@@ -573,7 +607,7 @@ int main(int argc, char **argv)
 	}
 
 	if (fru && dump & DUMP_BOARD)
-		dump_BOARD(fru->Board_Area);
+		dump_BOARD(fru->Board_Area, output_field);
 
 	if (fru && dump & DUMP_SUPPLY)
 		dump_MULTIRECORD(fru->MultiRecord_Area);
