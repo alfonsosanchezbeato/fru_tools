@@ -481,7 +481,7 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 		if (i != 0)
 			p += 5 + p[2];
 		if (p[0] >= 0x06 && p[0] <= 0xBF) {
-			printf_err("MultiRecord Area %i: Invalid Record Header\n", i);
+			printf_warn("MultiRecord Area %i: Invalid Record Header\n", i);
 			return NULL;
 		}
 		if (calc_zero_checksum(p, 4)) {
@@ -491,7 +491,7 @@ struct MULTIRECORD_INFO * parse_multiboard_area(unsigned char *data)
 		}
 
 		if (!p[2] || ((calc_zero_checksum(p+5, p[2] - 1) + p[3]) & 0xFF)) {
-			printf_err("MultiRecord Area %i (Record Type 0x%x): "
+			printf_warn("MultiRecord Area %i (Record Type 0x%x): "
 					"Record Checksum failed\n", i, p[0]);
 			return NULL;
 		}
